@@ -6,7 +6,7 @@
 
   <title>PixelSlim | Konwerter i kompresor zdjęć</title>
 
-  <!-- Moduł HEIC z dwoma źródłami zapasowymi -->
+  <!-- Ładowanie konwertera HEIC z dwóch alternatywnych źródeł -->
   <script type="module">
     window.heicModuleReady = (async () => {
       const sources = [
@@ -14,7 +14,7 @@
         "https://esm.sh/heic-to@1.6.5"
       ];
 
-      let lastError;
+      let lastError = null;
 
       for (const source of sources) {
         try {
@@ -35,14 +35,17 @@
         }
       }
 
-      throw lastError || new Error(
-        "Nie udało się załadować modułu HEIC."
+      throw (
+        lastError ||
+        new Error("Nie udało się załadować modułu HEIC.")
       );
     })();
   </script>
 
-  <!-- Pozostałe biblioteki -->
+  <!-- Biblioteka do tworzenia ZIP -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <!-- Biblioteka do zachowania EXIF w plikach JPEG -->
   <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"></script>
 
   <style>
@@ -55,6 +58,8 @@
       --border: #d5e2eb;
       --danger: #c73542;
       --success: #067b55;
+      --warning-background: #fff3cd;
+      --warning-text: #664d03;
     }
 
     * {
@@ -69,7 +74,7 @@
       min-height: 100vh;
       margin: 0;
       color: var(--text);
-      background: #fff;
+      background: #ffffff;
       font: 16px/1.5 Arial, Helvetica, sans-serif;
     }
 
@@ -83,6 +88,8 @@
       padding-bottom: 70px;
     }
 
+    /* Nagłówek */
+
     .top {
       display: flex;
       align-items: center;
@@ -90,7 +97,7 @@
       gap: 30px;
       height: 82px;
       padding: 0 clamp(24px, 4vw, 64px);
-      background: #fff;
+      background: #ffffff;
       border-bottom: 1px solid #e3e8ec;
     }
 
@@ -121,30 +128,34 @@
       text-decoration: none;
     }
 
-    .top-nav a:hover {
+    .top-nav a:hover,
+    .top-nav a:focus {
       color: var(--blue);
     }
 
     .privacy {
       padding: 15px 22px;
-      color: #fff;
+      color: #ffffff;
       background: var(--navy);
       font-size: 14px;
       font-weight: 700;
     }
+
+    /* Sekcja otwierająca */
 
     .hero {
       position: relative;
       min-height: 390px;
       padding: 70px clamp(24px, 4vw, 64px) 110px;
       overflow: hidden;
-      color: #fff;
-      background: linear-gradient(
-        120deg,
-        var(--blue),
-        #006eb5 48%,
-        var(--navy)
-      );
+      color: #ffffff;
+      background:
+        linear-gradient(
+          120deg,
+          var(--blue),
+          #006eb5 48%,
+          var(--navy)
+        );
     }
 
     .hero::after {
@@ -181,6 +192,8 @@
       line-height: 1.55;
     }
 
+    /* Główny obszar aplikacji */
+
     .main-area {
       position: relative;
       z-index: 3;
@@ -189,15 +202,19 @@
       padding: 0 22px;
     }
 
+    /* Obszar wyboru plików */
+
     .drop {
       padding: 40px 28px;
       text-align: center;
       cursor: pointer;
-      background: #fff;
+      background: #ffffff;
       border: 0;
       border-top: 7px solid var(--blue);
       box-shadow: 0 10px 34px rgba(0, 63, 127, 0.18);
-      transition: 0.2s;
+      transition:
+        background 0.2s,
+        transform 0.2s;
     }
 
     .drop:hover,
@@ -217,7 +234,7 @@
       width: 60px;
       height: 60px;
       margin: auto;
-      color: #fff;
+      color: #ffffff;
       background: var(--blue);
       font-size: 32px;
     }
@@ -233,521 +250,15 @@
       color: var(--muted);
     }
 
-    .btn {
-      padding: 13px 20px;
-      color: #fff;
-      background: var(--navy);
-      border: 0;
-      border-radius: 0;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .drop .btn {
-      margin-top: 20px;
-    }
-
-    .btn:hover:not(:disabled) {
-      background: #00539b;
-    }
-
-    .btn.secondary {
-      color: var(--navy);
-      background: #fff;
-      border: 2px solid var(--navy);
-    }
-
-    .btn.green {
-      background: var(--blue);
-    }
-
-    .btn.danger {
-      color: var(--danger);
-      background: #fff;
-      border: 2px solid #e7b8bd;
-    }
-
-    .btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-    }
-
-    .notice {
-      display: none;
-      margin-top: 16px;
-      padding: 12px;
-      color: #664d03;
-      background: #fff3cd;
-      border: 1px solid #ffecb5;
-    }
-
-    .workspace {
-      display: none;
-      grid-template-columns: 320px 1fr;
-      gap: 22px;
-      margin-top: 25px;
-    }
-
-    .card {
-      padding: 24px;
-      background: #fff;
-      border: 1px solid var(--border);
-      box-shadow: 0 5px 20px rgba(0, 63, 127, 0.08);
-    }
-
-    .card h3 {
-      margin: 0 0 20px;
-      padding-bottom: 12px;
-      color: var(--navy);
-      border-bottom: 3px solid var(--blue);
-      font-size: 19px;
-    }
-
-    .field {
-      margin-bottom: 18px;
-    }
-
-    .field label {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 7px;
-      color: #364451;
-      font-weight: 700;
-    }
-
-    .field small,
-    .hint {
-      color: var(--muted);
-    }
-
-    select,
-    input[type="number"] {
-      width: 100%;
-      padding: 11px;
-      color: var(--text);
-      background: #fff;
-      border: 1px solid #b9cbd8;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--blue);
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .checks {
-      display: grid;
-      gap: 10px;
-      color: #515f6c;
-    }
-
-    .checks label {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .hint {
-      margin: 4px 0 0 25px;
-      font-size: 11px;
-    }
-
-    .actions {
-      display: grid;
-      gap: 10px;
-      margin-top: 24px;
-    }
-
-    .files-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .files-head h3 {
-      flex: 1;
-      margin: 0;
-    }
-
-    .stats {
-      margin-left: 20px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .file-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .file {
-      display: grid;
-      grid-template-columns: 70px minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 14px;
-      padding: 11px;
-      background: #f5f9fc;
-      border-left: 5px solid var(--blue);
-    }
-
-    .thumb {
-      width: 70px;
-      height: 56px;
-      object-fit: cover;
-      background: #dce9f2;
-    }
-
-    .name {
-      max-width: 430px;
-      overflow: hidden;
-      color: var(--navy);
-      font-weight: 700;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .meta,
-    .status {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .status.ok {
-      color: var(--success);
-    }
-
-    .status.err {
-      color: var(--danger);
-    }
-
-    .download {
-      color: var(--navy);
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .remove {
-      color: var(--danger);
-      background: transparent;
-      border: 0;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .progress {
-      height: 5px;
-      margin-top: 7px;
-      overflow: hidden;
-      background: #d9e5ec;
-    }
-
-    .progress i {
-      display: block;
-      width: 0;
-      height: 100%;
-      background: var(--blue);
-      transition: width 0.2s;
-    }
-
-    @media (max-width: 900px) {
-      .top-nav {
-        display: none;
-      }
-
-      .workspace {
-        grid-template-columns: 1fr;
-      }
-
-      .hero {
-        min-height: 330px;
-      }
-
-      .hero p {
-        font-size: 18px;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .top {
-        height: auto;
-        padding: 16px 20px;
-      }
-
-      .privacy {
-        display: none;
-      }
-
-      .hero {
-        padding: 55px 22px 100px;
-      }
-
-      .main-area {
-        padding: 0 14px;
-      }
-
-      .file {
-        grid-template-columns: 55px minmax(0, 1fr);
-      }
-
-      .thumb {
-        width: 55px;
-        height: 50px;
-      }
-
-      .row-actions {
-        grid-column: 2;
-      }
-
-      .name {
-        max-width: 210px;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <main class="app">
-    <header class="top">
-      <div class="brand">
-        <div class="logo">PIXELSLIM</div>
-      </div>
-
-      <nav class="top-nav" aria-label="Nawigacja główna">
-        <a href="#drop">Konwersja</a>
-        <a href="#workspace">Ustawienia</a>
-        <a href="#workspace">Formaty</a>
-        <a href="#workspace">Pomoc</a>
-      </nav>
-
-      <div class="privacy">● Przetwarzanie lokalne</div>
-    </header>
-
-    <section class="hero">
-      <div class="hero-content">
-        <h1>Zmniejsz i konwertuj.</h1>
-
-        <p>
-          Kompresuj zdjęcia HEIC, JPEG, PNG i WebP, zmieniaj ich
-          wymiary oraz zachowuj metadane bez wysyłania plików
-          na serwer.
-        </p>
-      </div>
-    </section>
-
-    <div class="main-area">
-      <section
-        id="drop"
-        class="drop"
-        tabindex="0"
-        role="button"
-        aria-label="Wybierz zdjęcia do konwersji"
-      >
-        <div class="icon">⇧</div>
-
-        <h2>Dodaj zdjęcia do konwersji</h2>
-
-        <p>
-          Przeciągnij pliki tutaj lub wybierz je z urządzenia
-          • HEIC, HEIF, JPEG, PNG, WebP
-        </p>
-
-        <button id="chooseFiles" class="btn" type="button">
-          Wybierz zdjęcia
-        </button>
-
-        <input
-          id="picker"
-          type="file"
-          accept="image/*,.heic,.heif"
-          multiple
-          hidden
-        >
-      </section>
-
-      <div id="notice" class="notice" role="alert"></div>
-
-      <section id="workspace" class="workspace">
-        <aside class="card">
-          <h3>Ustawienia eksportu</h3>
-
-          <div class="field">
-            <label for="format">Format docelowy</label>
-
-            <select id="format">
-              <option value="image/jpeg">JPEG</option>
-              <option value="image/webp">WebP</option>
-              <option value="image/png">PNG</option>
-            </select>
-          </div>
-
-          <div class="field" id="qualityField">
-            <label for="quality">
-              <span>Jakość</span>
-              <span id="qualityText">82%</span>
-            </label>
-
-            <input
-              id="quality"
-              type="range"
-              min="20"
-              max="100"
-              value="82"
-            >
-          </div>
-
-          <div class="field">
-            <label>
-              Maksymalne wymiary
-              <small>px</small>
-            </label>
-
-            <div class="grid2">
-              <input
-                id="maxWidth"
-                type="number"
-                min="1"
-                max="16384"
-                value="1920"
-                aria-label="Maksymalna szerokość"
-              >
-
-              <input
-                id="maxHeight"
-                type="number"
-                min="1"
-                max="16384"
-                value="1920"
-                aria-label="Maksymalna wysokość"
-              >
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="targetKb">
-              Docelowy rozmiar
-              <small>opcjonalnie, KB</small>
-            </label>
-
-            <input
-              id="targetKb"
-              type="number"
-              min="1"
-              placeholder="np. 500"
-            >
-          </div>
-
-          <div class="checks">
-            <label>
-              <input id="noUpscale" type="checkbox" checked>
-              Nie powiększaj małych zdjęć
-            </label>
-
-            <label>
-              <input id="keepNames" type="checkbox" checked>
-              Zachowaj nazwy plików
-            </label>
-
-            <div>
-              <label>
-                <input id="keepMetadata" type="checkbox" checked>
-                Zachowaj metadane EXIF
-              </label>
-
-              <p class="hint">
-                EXIF jest zachowywany dla konwersji JPEG → JPEG.
-              </p>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button id="process" class="btn green" type="button">
-              Kompresuj i konwertuj
-            </button>
-
-            <button id="zip" class="btn secondary" type="button" disabled>
-              Pobierz wszystko jako ZIP
-            </button>
-
-            <button id="clear" class="btn danger" type="button">
-              Usuń wszystkie
-            </button>
-          </div>
-        </aside>
-
-        <section class="card">
-          <div class="files-head">
-            <h3>Wybrane zdjęcia</h3>
-            <span id="stats" class="stats"></span>
-          </div>
-
-          <div id="list" class="file-list"></div>
-        </section>
-      </section>
-    </div>
-  </main>
-
-  <script>
-    const state = {
-      items: []
-    };
-
-    const $ = (id) => document.getElementById(id);
-
-    const drop = $("drop");
-    const picker = $("picker");
-    const list = $("list");
-
-    function formatBytes(bytes) {
-      if (bytes < 1024) {
-        return `${bytes} B`;
-      }
-
-      if (bytes < 1048576) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-      }
-
-      return `${(bytes / 1048576).toFixed(2)} MB`;
-    }
-
-    function extensionFor(type) {
-      if (type === "image/png") {
-        return "png";
-      }
-
-      if (type === "image/webp") {
-        return "webp";
-      }
-
-      return "jpg";
-    }
-
-    function escapeHtml(value) {
-      return String(value).replace(
-        /[&<>'"]/g,
-        (character) => ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          "'": "&#39;",
-          '"': "&quot;"
-        })[character]
-      );
-    }
-
-    function showNotice(text) {
-      const notice = $("notice");
-
-      notice.textContent = text;
-      
+    /*
+      Pole pozostaje aktywne i dostępne dla przeglądarki,
+      ale nie jest widoczne na ekranie.
+    */
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+   
